@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Branded } from "../@shared/branded";
 import { ColorInternal } from "./color";
 import { getSettingApi, putSettingApi } from "../@backend-mock/main";
@@ -19,26 +18,32 @@ export const SettingInternal = ({
 }: SettingInternalParams): SettingInternal =>
   Branded({ name, color: color != null ? ColorInternal(color) : undefined });
 
-export const useGetSetting = (): SettingInternal => {
-  const [state, setState] = useState<
-    | { status: "pending" }
-    | { status: "fulfilled"; data: SettingInternal }
-    | { status: "rejected"; error: unknown }
-  >({ status: "pending" });
-  const promise = getSettingApi()
-    .then((data) => {
-      setState({ status: "fulfilled", data: SettingInternal(data) });
-    })
-    .catch((error) => {
-      setState({ status: "rejected", error });
-    });
-  switch (state.status) {
+let getSettingApiState:
+  | { status: "pending"; promise: Promise<unknown> }
+  | { status: "fulfilled"; data: SettingInternal }
+  | { status: "rejected"; error: unknown }
+  | undefined = undefined;
+export const useSetting = (): { data: SettingInternal } => {
+  if (getSettingApiState == null) {
+    const promise = getSettingApi()
+      .then((data) => {
+        getSettingApiState = {
+          status: "fulfilled",
+          data: SettingInternal(data),
+        };
+      })
+      .catch((error) => {
+        getSettingApiState = { status: "rejected", error };
+      });
+    getSettingApiState = { status: "pending", promise };
+  }
+  switch (getSettingApiState.status) {
     case "pending":
-      throw promise;
+      throw getSettingApiState.promise;
     case "fulfilled":
-      return state.data;
+      return { data: getSettingApiState.data };
     case "rejected":
-      throw state.error;
+      throw getSettingApiState.error;
   }
 };
 
@@ -47,25 +52,28 @@ export type PutSettingData = {
   color?: string;
 };
 
+let putSettingApiState:
+  | { status: "pending"; promise: Promise<unknown> }
+  | { status: "fulfilled" }
+  | { status: "rejected"; error: unknown }
+  | undefined = undefined;
 export const usePutSetting = (data: PutSettingData): void => {
-  const [state, setState] = useState<
-    | { status: "pending" }
-    | { status: "fulfilled" }
-    | { status: "rejected"; error: unknown }
-  >({ status: "pending" });
-  const promise = putSettingApi(data)
-    .then(() => {
-      setState({ status: "fulfilled" });
-    })
-    .catch((error) => {
-      setState({ status: "rejected", error });
-    });
-  switch (state.status) {
+  if (putSettingApiState == null) {
+    const promise = putSettingApi(data)
+      .then((data) => {
+        putSettingApiState = { status: "fulfilled" };
+      })
+      .catch((error) => {
+        putSettingApiState = { status: "rejected", error };
+      });
+    putSettingApiState = { status: "pending", promise };
+  }
+  switch (putSettingApiState.status) {
     case "pending":
-      throw promise;
+      throw putSettingApiState.promise;
     case "fulfilled":
       return;
     case "rejected":
-      throw state.error;
+      throw putSettingApiState.error;
   }
 };

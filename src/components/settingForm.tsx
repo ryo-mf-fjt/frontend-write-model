@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { failure, isFailure, Result, success } from "../@shared/result";
-import { PutSettingData, SettingInternal } from "../domain/setting";
+import { PutSettingData, SettingInternal, useSetting } from "../domain/setting";
 import {
   ColorField,
   ColorInputData,
@@ -10,20 +11,21 @@ import {
   NameField,
   NameInputData,
 } from "./nameField";
+import { putSettingApi } from "../@backend-mock/main";
 
-export type SettingFormData = {
+type SettingFormData = {
   name: NameInputData;
   color: ColorInputData;
 };
 
-export const SettingFormData = (setting: SettingInternal): SettingFormData => {
+const SettingFormData = (setting: SettingInternal): SettingFormData => {
   return {
     name: NameInputData(setting.name),
     color: ColorInputData(setting.color),
   };
 };
 
-export const externalizeSettingFormData = (
+const externalizeSettingFormData = (
   inputData: SettingFormData
 ): Result<PutSettingData, string> => {
   const nameResult = externalizeNameInputData(inputData.name);
@@ -43,13 +45,51 @@ export const externalizeSettingFormData = (
   });
 };
 
-export type SettingFormProps = {};
+type _SettingFormProps = {
+  setting: SettingInternal;
+  onSubmit: (settingFormData: SettingFormData) => Promise<void>;
+};
 
-export const SettingForm = () => {
+const _SettingForm = ({ setting, onSubmit }: _SettingFormProps) => {
+  const [settingFormData, setSettingFormData] = useState<SettingFormData>(
+    SettingFormData(setting)
+  );
+
+  const onChangeName = (name: NameInputData) => {
+    setSettingFormData((_settingFormData) => ({ ...settingFormData, name }));
+  };
+  const onChangeColor = (color: ColorInputData) => {
+    setSettingFormData((_settingFormData) => ({ ...settingFormData, color }));
+  };
+
   return (
     <>
-      <NameField />
-      <ColorField />
+      <NameField value={settingFormData.name} onChange={onChangeName} />
+      <ColorField value={settingFormData.color} onChange={onChangeColor} />
+      <button
+        onClick={() => {
+          onSubmit(settingFormData);
+        }}
+      >
+        送信
+      </button>
     </>
   );
+};
+
+export type SettingFormProps = Omit<_SettingFormProps, "setting" | "onSubmit">;
+
+export const SettingForm = (props: SettingFormProps) => {
+  const { data: setting } = useSetting();
+
+  const onSubmit = async (settingFormData: SettingFormData) => {
+    const result = externalizeSettingFormData(settingFormData);
+    if (isFailure(result)) {
+      alert(result.error);
+      return;
+    }
+    await putSettingApi(result.value);
+  };
+
+  return <_SettingForm setting={setting} onSubmit={onSubmit} {...props} />;
 };
