@@ -1,5 +1,5 @@
 import { failure, isFailure, Result, success } from "../@shared/result";
-import { PutSettingBody, SettingInternal } from "../domain/setting";
+import { PutSettingData, SettingInternal } from "../domain/setting";
 import {
   ColorField,
   ColorInputData,
@@ -25,7 +25,7 @@ export const SettingFormData = (setting: SettingInternal): SettingFormData => {
 
 export const externalizeSettingFormData = (
   inputData: SettingFormData
-): Result<PutSettingBody, string> => {
+): Result<PutSettingData, string> => {
   const nameResult = externalizeNameInputData(inputData.name);
   if (isFailure(nameResult)) {
     return failure(nameResult.error);
